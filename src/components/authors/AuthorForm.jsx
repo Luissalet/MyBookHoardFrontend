@@ -1,25 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useCreateAuthor, useUpdateAuthor } from '../../hooks/useAuthors';
 
 export function AuthorForm({ isOpen, onClose, author = null }) {
-  const [nombre, setNombre] = useState('');
+  // Reset-on-prop-change pattern from
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // — track the previous `author`/`isOpen` and reset during render
+  // instead of via useEffect+setState (which trips
+  // `react-hooks/set-state-in-effect`).
+  const [nombre, setNombre] = useState(author?.name || '');
   const [errors, setErrors] = useState({});
+  const [prevAuthorId, setPrevAuthorId] = useState(author?.id ?? null);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (author?.id !== prevAuthorId || isOpen !== prevIsOpen) {
+    setPrevAuthorId(author?.id ?? null);
+    setPrevIsOpen(isOpen);
+    setNombre(author?.name || '');
+    setErrors({});
+  }
 
   const createAuthorMutation = useCreateAuthor();
   const updateAuthorMutation = useUpdateAuthor();
-
-  // Initialize form with author data when editing
-  useEffect(() => {
-    if (author) {
-      setNombre(author.name || '');
-    } else {
-      setNombre('');
-    }
-    setErrors({});
-  }, [author, isOpen]);
 
   const validateForm = () => {
     const newErrors = {};

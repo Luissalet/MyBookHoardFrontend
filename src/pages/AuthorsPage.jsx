@@ -6,12 +6,10 @@ import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { AuthorForm } from '../components/authors/AuthorForm';
-import {
-  useAuthors,
-  useCreateAuthor,
-  useUpdateAuthor,
-  useDeleteAuthor,
-} from '../hooks/useAuthors';
+// Create/update author mutations live inside <AuthorForm />; this page
+// only needs the list query and the delete mutation it fires from the
+// row actions.
+import { useAuthors, useDeleteAuthor } from '../hooks/useAuthors';
 
 export function AuthorsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -19,7 +17,6 @@ export function AuthorsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingAuthorId, setDeletingAuthorId] = useState(null);
-  const [editingId, setEditingId] = useState(null);
 
   const { data: authors = [], isLoading } = useAuthors();
   const deleteAuthorMutation = useDeleteAuthor();
@@ -38,14 +35,12 @@ export function AuthorsPage() {
 
   const handleEditAuthor = (author) => {
     setEditingAuthor(author);
-    setEditingId(author.id);
     setIsFormOpen(true);
   };
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingAuthor(null);
-    setEditingId(null);
   };
 
   const handleDeleteAuthor = (authorId) => {

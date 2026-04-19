@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Book, Star } from 'lucide-react';
 import { useBook, useDeleteBook } from '../hooks/useBooks';
-import { useUserBooksWithDetails, useUpdateUserBook, useRemoveFromCollection } from '../hooks/useUserBooks';
+import { useUserBooksWithDetails, useUpdateUserBook } from '../hooks/useUserBooks';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
-import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
 import { BookReviews } from '../components/books/BookReviews';
 
@@ -20,7 +19,6 @@ export function BookDetailPage() {
   const { data: book, isLoading: loadingBook } = useBook(id);
   const { data: userBooks } = useUserBooksWithDetails(user?.id);
   const updateUserBook = useUpdateUserBook();
-  const removeFromCollection = useRemoveFromCollection();
   const deleteBook = useDeleteBook();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -66,35 +64,6 @@ export function BookDetailPage() {
 
   // Rating conversion (0-10 to 0-5)
   const displayRating = userBook?.rating ? Math.round((userBook.rating / 10) * 5 * 2) / 2 : null;
-
-  // Render stars
-  const renderStars = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(
-          <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-        );
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(
-          <div key={i} className="relative w-5 h-5">
-            <Star className="w-5 h-5 text-gray-300" />
-            <div className="absolute inset-0 overflow-hidden w-2.5">
-              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-            </div>
-          </div>
-        );
-      } else {
-        stars.push(
-          <Star key={i} className="w-5 h-5 text-gray-300" />
-        );
-      }
-    }
-    return stars;
-  };
 
   // Handle rating change
   const handleRatingChange = async (newRating) => {
@@ -158,22 +127,6 @@ export function BookDetailPage() {
     { value: 'read', label: 'Leído' },
     { value: 'abandoned', label: 'Abandonado' },
   ];
-
-  const getReadingStatusBadge = () => {
-    if (!userBook?.reading_status) return null;
-
-    const statusMap = {
-      not_started: { label: 'Sin empezar', variant: 'neutral' },
-      reading: { label: 'Leyendo', variant: 'info' },
-      read: { label: 'Leído', variant: 'success' },
-      abandoned: { label: 'Abandonado', variant: 'warning' },
-    };
-
-    const status = statusMap[userBook.reading_status];
-    if (!status) return null;
-
-    return <Badge variant={status.variant}>{status.label}</Badge>;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">

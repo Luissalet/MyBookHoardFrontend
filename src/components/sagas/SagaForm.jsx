@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -6,40 +6,37 @@ import { Button } from '../ui/Button';
 import { useCreateSaga, useUpdateSaga } from '../../hooks/useSagas';
 import { useAuthors } from '../../hooks/useAuthors';
 
-export function SagaForm({ isOpen, onClose, saga = null }) {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    descripción: '',
-    autor: '',
-  });
+// Derive the form state from the `saga` prop. The DB column is
+// `primary_author_id` (sagas.primary_author_id) and the API returns it
+// under that exact key — earlier revisions read `saga.author_id`, which
+// is undefined, so the author dropdown always started blank when editing.
+const sagaToFormData = (saga) => ({
+  nombre: saga?.name || '',
+  descripción: saga?.description || '',
+  autor: saga?.primary_author_id?.toString() || '',
+});
 
+export function SagaForm({ isOpen, onClose, saga = null }) {
+  // Resetting-on-prop-change pattern from
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // — track the previous `saga`/`isOpen` pair and reset during render
+  // instead of via useEffect+setState, which trips
+  // `react-hooks/set-state-in-effect` and cascades renders.
+  const [formData, setFormData] = useState(() => sagaToFormData(saga));
   const [errors, setErrors] = useState({});
+  const [prevSagaId, setPrevSagaId] = useState(saga?.id ?? null);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (saga?.id !== prevSagaId || isOpen !== prevIsOpen) {
+    setPrevSagaId(saga?.id ?? null);
+    setPrevIsOpen(isOpen);
+    setFormData(sagaToFormData(saga));
+    setErrors({});
+  }
+
   const createSagaMutation = useCreateSaga();
   const updateSagaMutation = useUpdateSaga();
   const { data: authors = [] } = useAuthors();
-
-  // Initialize form with saga data when editing.
-  //
-  // NOTE: the DB column is `primary_author_id` (sagas.primary_author_id);
-  // the API returns it under that exact key. This form previously read
-  // `saga.author_id`, which is undefined, so the author dropdown always
-  // started blank when editing.
-  useEffect(() => {
-    if (saga) {
-      setFormData({
-        nombre: saga.name || '',
-        descripción: saga.description || '',
-        autor: saga.primary_author_id?.toString() || '',
-      });
-    } else {
-      setFormData({
-        nombre: '',
-        descripción: '',
-        autor: '',
-      });
-    }
-    setErrors({});
-  }, [saga, isOpen]);
 
   const validateForm = () => {
     const newErrors = {};
