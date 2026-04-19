@@ -32,9 +32,13 @@ export function BooksPage() {
   // Fetch user's books with details (reading status, ratings, etc.)
   const { data: userBooksData, isLoading: loadingUserBooks } = useUserBooksWithDetails(user?.id);
 
-  const books = useMemo(() => booksData?.data || [], [booksData]);
-  const userBooks = useMemo(() => userBooksData || [], [userBooksData]);
-  const totalBooks = useMemo(() => booksData?.total || 0, [booksData]);
+  // `useBooks` now selects to `{ books, pagination }`.
+  const books = useMemo(() => booksData?.books ?? [], [booksData]);
+  const userBooks = useMemo(() => userBooksData ?? [], [userBooksData]);
+  const totalBooks = useMemo(
+    () => booksData?.pagination?.total ?? 0,
+    [booksData]
+  );
 
   const isLoading = loadingBooks || loadingUserBooks;
 

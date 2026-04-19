@@ -1,10 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { booksApi } from '../services/books.api';
 
+/**
+ * Paginated books list.
+ *
+ * `booksApi.getBooks` resolves to the raw envelope
+ * `{ success, data: { books, pagination }, timestamp }`.
+ * `select` unwraps to `{ books, pagination }` so consumers can read
+ * `data.books` and `data.pagination.total` directly.
+ */
 export function useBooks(params = {}) {
   return useQuery({
     queryKey: ['books', params],
     queryFn: () => booksApi.getBooks(params),
+    select: (envelope) => ({
+      books: envelope?.data?.books ?? [],
+      pagination: envelope?.data?.pagination ?? null,
+    }),
   });
 }
 

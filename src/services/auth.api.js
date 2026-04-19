@@ -32,23 +32,32 @@ export const register = (username, email, password) => {
 
 /**
  * Logout user
+ *
+ * NOTE: API reads `$data['refresh_token']` (snake_case). Sending
+ * `{refreshToken}` here would be silently ignored — the token would
+ * never get revoked server-side.
+ *
  * @param {string} refreshToken - Refresh token
  * @returns {Promise} Logout response
  */
 export const logout = (refreshToken) => {
   return axiosInstance.post(`${AUTH_BASE}/logout`, {
-    refreshToken,
+    refresh_token: refreshToken,
   });
 };
 
 /**
  * Refresh access token
+ *
+ * NOTE: API reads `$data['refresh_token']` (snake_case). Same trap
+ * as logout above.
+ *
  * @param {string} refreshToken - Refresh token
  * @returns {Promise} Response with new access token
  */
 export const refreshToken = (refreshToken) => {
   return axiosInstance.post(`${AUTH_BASE}/refresh`, {
-    refreshToken,
+    refresh_token: refreshToken,
   });
 };
 

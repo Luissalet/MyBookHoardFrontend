@@ -21,16 +21,19 @@ export function DashboardPage() {
   const { user } = useAuth();
   const { data: userBooks } = useUserBooksWithDetails(user?.id);
 
-  // Calculate stats
+  // Calculate stats.
+  //
+  // NOTE: schema is `wishlist_status enum('wish','on_the_way','obtained')`
+  // — NULL = not wishlisted. Any non-null value = wishlisted.
   const stats = React.useMemo(() => {
     if (!userBooks) return { total: 0, read: 0, reading: 0, notStarted: 0, wishlist: 0 };
 
     return {
       total: userBooks.length,
-      read: userBooks.filter(ub => ub.reading_status === 'completed').length,
-      reading: userBooks.filter(ub => ub.reading_status === 'reading').length,
-      notStarted: userBooks.filter(ub => ub.reading_status === 'not_started').length,
-      wishlist: userBooks.filter(ub => ub.in_wishlist).length,
+      read: userBooks.filter((ub) => ub.reading_status === 'completed').length,
+      reading: userBooks.filter((ub) => ub.reading_status === 'reading').length,
+      notStarted: userBooks.filter((ub) => ub.reading_status === 'not_started').length,
+      wishlist: userBooks.filter((ub) => !!ub.wishlist_status).length,
     };
   }, [userBooks]);
 
@@ -140,9 +143,12 @@ export function DashboardPage() {
         </h2>
         {recentBooks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentBooks.map((userBook) => (
+            {recentBooks.map((userBook, idx) => (
               <BookCard
-                key={userBook.id}
+                // Prefer the userbook id (now top-level after the
+                // useUserBooksWithDetails flatten); fall back to
+                // book id, then index, so React always has a key.
+                key={userBook.id ?? userBook.book?.id ?? `recent-${idx}`}
                 book={userBook.book}
                 userBook={userBook}
               />

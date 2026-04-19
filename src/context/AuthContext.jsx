@@ -10,6 +10,12 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Check authentication status on mount
+   *
+   * IMPORTANT: All `/auth/*` endpoints return the standard
+   * `{ success, data, timestamp }` envelope from `Response::success()`.
+   * Axios resolves `response.data === envelope`, so the actual payload
+   * lives at `response.data.data`. Tokens use snake_case
+   * (`access_token`, `refresh_token`) to match the API.
    */
   const checkAuth = useCallback(async () => {
     try {
@@ -17,16 +23,32 @@ export const AuthProvider = ({ children }) => {
       const storedUser = localStorage.getItem('user');
       const accessToken = localStorage.getItem('access_token');
 
-      if (storedUser && accessToken) {
+      // Guard against historical bug: prior code did
+      // `localStorage.setItem('user', JSON.stringify(undefined))`
+      // which stores the literal string "undefined". Treat that as
+      // unauthenticated and clear it.
+      const hasValidStoredUser =
+        storedUser && storedUser !== 'undefined' && storedUser !== 'null';
+
+      if (hasValidStoredUser && accessToken) {
         // Verify token is still valid by calling /auth/me
         const response = await authAPI.getMe();
-        setUser(response.data);
+        const userData = response.data?.data?.user ?? null;
+        if (!userData) {
+          throw new Error('Malformed /auth/me response');
+        }
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
         setIsAuthenticated(true);
       } else {
+        // Clear any stale poison values
+        if (storedUser && !hasValidStoredUser) {
+          localStorage.removeItem('user');
+        }
         setUser(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
+    } catch {
       // Token invalid or expired
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
@@ -45,16 +67,21 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authAPI.login(identifier, password);
-      const { accessToken, refreshToken, user: userData } = response.data;
+      // API shape: { success, data: { access_token, refresh_token, user, ... }, timestamp }
+      const payload = response.data?.data;
+      if (!payload?.access_token || !payload?.refresh_token || !payload?.user) {
+        throw new Error('Malformed login response');
+      }
+      const { access_token, refresh_token, user: userData } = payload;
 
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('refresh_token', refreshToken);
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user', JSON.stringify(userData));
 
       setUser(userData);
       setIsAuthenticated(true);
 
-      return response.data;
+      return payload;
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
@@ -71,16 +98,21 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authAPI.register(username, email, password);
-      const { accessToken, refreshToken, user: userData } = response.data;
+      // Same envelope shape as login.
+      const payload = response.data?.data;
+      if (!payload?.access_token || !payload?.refresh_token || !payload?.user) {
+        throw new Error('Malformed register response');
+      }
+      const { access_token, refresh_token, user: userData } = payload;
 
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('refresh_token', refreshToken);
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user', JSON.stringify(userData));
 
       setUser(userData);
       setIsAuthenticated(true);
 
-      return response.data;
+      return payload;
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
@@ -108,7 +140,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
+    } catch {
       // Even if logout API fails, clear local state
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
@@ -117,7 +149,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
 
-      throw error;
+      // Swallow — clearing local state is the real success criterion.
     } finally {
       setIsLoading(false);
     }

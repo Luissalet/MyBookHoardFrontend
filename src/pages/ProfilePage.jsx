@@ -14,13 +14,15 @@ export function ProfilePage() {
   );
   const { data: userBooks = [] } = useUserBooksWithDetails(user?.id);
 
-  // Calculate stats
+  // Calculate stats.
+  // Schema: `wishlist_status enum('wish','on_the_way','obtained')`.
+  // Any non-null value means the book is on the wishlist.
   const stats = React.useMemo(() => {
     return {
       total: userBooks.length,
-      read: userBooks.filter(ub => ub.reading_status === 'completed').length,
-      reading: userBooks.filter(ub => ub.reading_status === 'reading').length,
-      wishlist: userBooks.filter(ub => ub.in_wishlist).length,
+      read: userBooks.filter((ub) => ub.reading_status === 'completed').length,
+      reading: userBooks.filter((ub) => ub.reading_status === 'reading').length,
+      wishlist: userBooks.filter((ub) => !!ub.wishlist_status).length,
     };
   }, [userBooks]);
 

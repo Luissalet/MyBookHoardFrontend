@@ -35,13 +35,18 @@ axiosInstance.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
-        // Call refresh endpoint
+        // Call refresh endpoint.
+        // API expects body `{refresh_token}` (snake_case) and returns
+        // the standard envelope `{success, data: {access_token, ...}, timestamp}`.
         const response = await axios.post(
           `${import.meta.env.VITE_API_URL || 'https://api.mybookhoard.com/api'}/auth/refresh`,
-          { refreshToken }
+          { refresh_token: refreshToken }
         );
 
-        const { accessToken: newAccessToken } = response.data;
+        const newAccessToken = response.data?.data?.access_token;
+        if (!newAccessToken) {
+          throw new Error('Malformed refresh response');
+        }
         localStorage.setItem('access_token', newAccessToken);
 
         // Retry original request with new token
