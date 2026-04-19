@@ -27,13 +27,13 @@ export function BookReviews({ bookId }) {
   const { user } = useAuth();
   const bookIdNum = Number(bookId);
 
-  const { data, isLoading, isError } = useBookReviews(bookIdNum);
+  // `useBookReviews` now selects to a flat array via `select` —
+  // see hooks/useReviews.js JSDoc and lessons #6–#8.
+  const { data: reviews = [], isLoading, isError } = useBookReviews(bookIdNum);
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
   const markHelpful = useMarkReviewHelpful();
-
-  const reviews = useMemo(() => data?.data?.reviews ?? [], [data]);
   const myReview = useMemo(
     () => reviews.find((r) => r.user_id === user?.id) ?? null,
     [reviews, user?.id]

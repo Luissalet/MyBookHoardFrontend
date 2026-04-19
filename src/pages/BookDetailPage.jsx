@@ -149,20 +149,24 @@ export function BookDetailPage() {
     }
   };
 
-  // Reading status badge
+  // Reading status options. The DB enum is
+  // ('not_started','reading','read','abandoned'). The UI labels are in
+  // Spanish — "Leído" maps to the DB value `read`, NOT `completed`.
   const readingStatusOptions = [
     { value: 'not_started', label: 'Sin empezar' },
     { value: 'reading', label: 'Leyendo' },
-    { value: 'completed', label: 'Leído' },
+    { value: 'read', label: 'Leído' },
+    { value: 'abandoned', label: 'Abandonado' },
   ];
 
   const getReadingStatusBadge = () => {
     if (!userBook?.reading_status) return null;
 
     const statusMap = {
-      'not_started': { label: 'Sin empezar', variant: 'neutral' },
-      'reading': { label: 'Leyendo', variant: 'info' },
-      'completed': { label: 'Leído', variant: 'success' },
+      not_started: { label: 'Sin empezar', variant: 'neutral' },
+      reading: { label: 'Leyendo', variant: 'info' },
+      read: { label: 'Leído', variant: 'success' },
+      abandoned: { label: 'Abandonado', variant: 'warning' },
     };
 
     const status = statusMap[userBook.reading_status];

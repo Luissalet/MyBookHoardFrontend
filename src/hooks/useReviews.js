@@ -9,12 +9,24 @@ import { reviewsApi } from '../services/reviews.api';
  *
  * After any write we invalidate the umbrella ['reviews'] prefix so both list
  * shapes stay fresh. Single-review caches are refreshed explicitly.
+ *
+ * Boundary normalization (lessons #6/#7/#8):
+ *   The service `*.api.js` files do `.then(r => r.data)` which strips the
+ *   axios wrapper but NOT the API envelope. Each `useQuery` here adds a
+ *   `select` that unwraps the API envelope so consumers see the friendly
+ *   shape (array for lists, plain object for `useReview`).
+ *
+ *   API envelope: `{ success, data: {...payload}, timestamp }`
+ *     - GET /reviews/by-book/{id}  → data: { reviews: [...], total }
+ *     - GET /reviews/by-user/{id}  → data: { reviews: [...], total }
+ *     - GET /reviews/{id}          → data: { ...review fields }
  */
 export function useBookReviews(bookId, params) {
   return useQuery({
     queryKey: ['reviews', 'by-book', bookId, params],
     queryFn: () => reviewsApi.getByBook(bookId, params),
     enabled: !!bookId,
+    select: (envelope) => envelope?.data?.reviews ?? [],
   });
 }
 
@@ -23,6 +35,7 @@ export function useUserReviews(userId) {
     queryKey: ['reviews', 'by-user', userId],
     queryFn: () => reviewsApi.getByUser(userId),
     enabled: !!userId,
+    select: (envelope) => envelope?.data?.reviews ?? [],
   });
 }
 
@@ -31,6 +44,7 @@ export function useReview(id) {
     queryKey: ['reviews', id],
     queryFn: () => reviewsApi.getReview(id),
     enabled: !!id,
+    select: (envelope) => envelope?.data ?? null,
   });
 }
 

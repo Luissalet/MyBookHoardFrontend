@@ -15,12 +15,15 @@ export function ProfilePage() {
   const { data: userBooks = [] } = useUserBooksWithDetails(user?.id);
 
   // Calculate stats.
-  // Schema: `wishlist_status enum('wish','on_the_way','obtained')`.
-  // Any non-null value means the book is on the wishlist.
+  // Schema:
+  //   reading_status  enum('not_started','reading','read','abandoned')
+  //   wishlist_status enum('wish','on_the_way','obtained')  — NULL = not wishlisted.
+  // The DB value for "finished reading" is `read`, not `completed`; using
+  // `completed` silently produced a 0.
   const stats = React.useMemo(() => {
     return {
       total: userBooks.length,
-      read: userBooks.filter((ub) => ub.reading_status === 'completed').length,
+      read: userBooks.filter((ub) => ub.reading_status === 'read').length,
       reading: userBooks.filter((ub) => ub.reading_status === 'reading').length,
       wishlist: userBooks.filter((ub) => !!ub.wishlist_status).length,
     };

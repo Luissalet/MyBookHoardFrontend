@@ -1,8 +1,22 @@
-import React, { createContext, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import * as authAPI from '../services/auth.api';
+import { AuthContext } from './AuthContext';
 
-export const AuthContext = createContext(null);
-
+/**
+ * AuthProvider
+ *
+ * Owns the auth state tree for the app and provides `login`, `register`,
+ * `logout`, and `checkAuth` to descendants via AuthContext. The
+ * non-component `AuthContext` lives in its own module (AuthContext.js) so
+ * this file exports only components — a requirement of the
+ * `react-refresh/only-export-components` lint rule, and of Fast Refresh.
+ *
+ * IMPORTANT: All `/auth/*` endpoints return the standard
+ * `{ success, data, timestamp }` envelope from `Response::success()`.
+ * Axios resolves `response.data === envelope`, so the actual payload
+ * lives at `response.data.data`. Tokens use snake_case
+ * (`access_token`, `refresh_token`) to match the API.
+ */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,12 +24,6 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Check authentication status on mount
-   *
-   * IMPORTANT: All `/auth/*` endpoints return the standard
-   * `{ success, data, timestamp }` envelope from `Response::success()`.
-   * Axios resolves `response.data === envelope`, so the actual payload
-   * lives at `response.data.data`. Tokens use snake_case
-   * (`access_token`, `refresh_token`) to match the API.
    */
   const checkAuth = useCallback(async () => {
     try {

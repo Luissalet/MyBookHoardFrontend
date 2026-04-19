@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Plus, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -7,8 +7,11 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SagaForm } from '../components/sagas/SagaForm';
 import { useSagas, useDeleteSaga, useSagaBooks } from '../hooks/useSagas';
+import { useUserBooksWithDetails } from '../hooks/useUserBooks';
+import { useAuth } from '../hooks/useAuth';
 
 export function SagasPage() {
+  const { user } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSaga, setEditingSaga] = useState(null);
   const [expandedSagaId, setExpandedSagaId] = useState(null);
@@ -18,6 +21,28 @@ export function SagasPage() {
   const { data: sagas, isLoading } = useSagas();
   const deleteSagaMutation = useDeleteSaga();
   const { data: sagaBooks } = useSagaBooks(expandedSagaId);
+
+  // The user's collection — used to compute "read/total" per saga.
+  // The total comes from the saga aggregate the API already returns
+  // (`actual_books_count` from the LEFT JOIN COUNT). The read count
+  // is per-user, derived by matching `book.saga_id === saga.id` against
+  // user_books with `reading_status === 'read'` — that is the DB enum
+  // value for a finished book; earlier code used `'completed'` and
+  // silently produced 0.
+  const { data: userBooks = [] } = useUserBooksWithDetails(user?.id);
+
+  // Pre-bucket per-saga read counts once per render so we don't filter
+  // the entire user-books array per saga.
+  const readBySagaId = useMemo(() => {
+    const counts = new Map();
+    for (const ub of userBooks) {
+      if (ub.reading_status !== 'read') continue;
+      const sagaId = ub.book?.saga_id;
+      if (!sagaId) continue;
+      counts.set(sagaId, (counts.get(sagaId) ?? 0) + 1);
+    }
+    return counts;
+  }, [userBooks]);
 
   const handleNewSaga = () => {
     setEditingSaga(null);
@@ -50,11 +75,15 @@ export function SagasPage() {
   };
 
   const getSagaCompletionStatus = (saga) => {
-    if (!saga.books || saga.books.length === 0) return { completed: 0, total: 0 };
-    const completed = saga.books.filter(
-      (b) => b.user_book?.reading_status === 'completed'
-    ).length;
-    return { completed, total: saga.books.length };
+    // Total comes from the API aggregate. Prefer the live COUNT
+    // (`actual_books_count`) over the editable `total_books` hint so the
+    // UI matches reality even if the stored target drifts.
+    const total =
+      Number(saga.actual_books_count) ||
+      Number(saga.total_books) ||
+      0;
+    const read = readBySagaId.get(saga.id) ?? 0;
+    return { read, total };
   };
 
   return (
@@ -83,7 +112,7 @@ export function SagasPage() {
         <div className="grid grid-cols-1 gap-4">
           {sagas.map((saga) => {
             const isExpanded = expandedSagaId === saga.id;
-            const { completed, total } = getSagaCompletionStatus(saga);
+            const { read, total } = getSagaCompletionStatus(saga);
 
             return (
               <Card key={saga.id}>
@@ -116,11 +145,11 @@ export function SagasPage() {
                           <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-green-500 transition-all"
-                              style={{ width: `${(completed / total) * 100}%` }}
+                              style={{ width: `${(read / total) * 100}%` }}
                             />
                           </div>
                           <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                            {completed}/{total}
+                            {read}/{total}
                           </span>
                         </div>
                       )}
@@ -170,24 +199,22 @@ export function SagasPage() {
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
                               {book.title}
                             </p>
-                            {book.user_book?.reading_status && (
-                              <Badge
-                                variant={
-                                  book.user_book.reading_status === 'completed'
-                                    ? 'success'
-                                    : book.user_book.reading_status === 'reading'
-                                    ? 'info'
-                                    : 'neutral'
-                                }
-                                className="text-xs mt-1"
-                              >
-                                {book.user_book.reading_status === 'completed'
-                                  ? 'Leído'
-                                  : book.user_book.reading_status === 'reading'
-                                  ? 'Leyendo'
-                                  : 'Sin empezar'}
-                              </Badge>
-                            )}
+                            {book.user_book?.reading_status && (() => {
+                              // DB enum: 'not_started' | 'reading' | 'read' | 'abandoned'
+                              const labels = {
+                                not_started: { label: 'Sin empezar', variant: 'neutral' },
+                                reading: { label: 'Leyendo', variant: 'info' },
+                                read: { label: 'Leído', variant: 'success' },
+                                abandoned: { label: 'Abandonado', variant: 'warning' },
+                              };
+                              const s = labels[book.user_book.reading_status];
+                              if (!s) return null;
+                              return (
+                                <Badge variant={s.variant} className="text-xs mt-1">
+                                  {s.label}
+                                </Badge>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}

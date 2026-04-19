@@ -60,11 +60,9 @@ export function AuthorsPage() {
     }
   };
 
-  // Count books per author (mocked - would come from API)
-  const getAuthorBookCount = (author) => {
-    // In a real app, this would come from the author object or a separate query
-    return author.books_count || 0;
-  };
+  // `books_count` is aggregated by the API (`Author::all()` LEFT JOINs
+  // books on `primary_author_id` and COUNTs). It is always a number.
+  const getAuthorBookCount = (author) => Number(author.books_count ?? 0);
 
   return (
     <div className="p-6">

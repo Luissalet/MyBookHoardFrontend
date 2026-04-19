@@ -18,13 +18,18 @@ export function SagaForm({ isOpen, onClose, saga = null }) {
   const updateSagaMutation = useUpdateSaga();
   const { data: authors = [] } = useAuthors();
 
-  // Initialize form with saga data when editing
+  // Initialize form with saga data when editing.
+  //
+  // NOTE: the DB column is `primary_author_id` (sagas.primary_author_id);
+  // the API returns it under that exact key. This form previously read
+  // `saga.author_id`, which is undefined, so the author dropdown always
+  // started blank when editing.
   useEffect(() => {
     if (saga) {
       setFormData({
         nombre: saga.name || '',
         descripción: saga.description || '',
-        autor: saga.author_id?.toString() || '',
+        autor: saga.primary_author_id?.toString() || '',
       });
     } else {
       setFormData({
@@ -53,10 +58,13 @@ export function SagaForm({ isOpen, onClose, saga = null }) {
     }
 
     try {
+      // Match the API column names exactly — `Saga::create/update` reads
+      // `primary_author_id`, not `author_id`. Posting `author_id` was a
+      // no-op that silently dropped the author.
       const payload = {
         name: formData.nombre,
         description: formData.descripción,
-        author_id: formData.autor ? parseInt(formData.autor) : null,
+        primary_author_id: formData.autor ? parseInt(formData.autor, 10) : null,
       };
 
       if (saga) {

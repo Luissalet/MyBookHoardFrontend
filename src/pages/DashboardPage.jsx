@@ -23,14 +23,17 @@ export function DashboardPage() {
 
   // Calculate stats.
   //
-  // NOTE: schema is `wishlist_status enum('wish','on_the_way','obtained')`
-  // — NULL = not wishlisted. Any non-null value = wishlisted.
+  // NOTE: schema is `reading_status enum('not_started','reading','read','abandoned')`
+  // and `wishlist_status enum('wish','on_the_way','obtained')` — NULL wishlist_status
+  // means not wishlisted. The DB value for "finished the book" is `read`, NOT
+  // `completed`; earlier versions of this page used `'completed'` and silently
+  // reported 0 books read.
   const stats = React.useMemo(() => {
     if (!userBooks) return { total: 0, read: 0, reading: 0, notStarted: 0, wishlist: 0 };
 
     return {
       total: userBooks.length,
-      read: userBooks.filter((ub) => ub.reading_status === 'completed').length,
+      read: userBooks.filter((ub) => ub.reading_status === 'read').length,
       reading: userBooks.filter((ub) => ub.reading_status === 'reading').length,
       notStarted: userBooks.filter((ub) => ub.reading_status === 'not_started').length,
       wishlist: userBooks.filter((ub) => !!ub.wishlist_status).length,
